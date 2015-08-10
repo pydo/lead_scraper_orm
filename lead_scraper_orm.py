@@ -2,6 +2,8 @@ import time
 import requests
 from lxml import html
 from lxml.html.clean import Cleaner
+import datetime
+import argparse
 
 from models import Job, session
 
@@ -10,17 +12,17 @@ class Indeed:
     """indeed.ca scraper. Takes in url parameter including search terms and location that
     will be fed into the url"""
 
-    def __init__(self, searchterm, city, province):
-        self.searchterm = searchterm
-        self.city = city
-        self.province = province
+    def __init__(self, args):
+        self.searchterm = args.searchterm
+        self.city = args.city
+        self.province = args.province
 
     def crawl(self):
         # count starts at first page
         crawling = True
         count = 0
-        time.sleep(5)
         while crawling:
+            time.sleep(10)
             searchterm = self.searchterm
             city = self.city
             prov = self.province
@@ -36,10 +38,21 @@ class Indeed:
             jobtitles = tree.xpath('//h2[@class="jobtitle"]/a/text()')
             joblinks = tree.xpath('//h2[@class="jobtitle"]/a/@href')
             job_descriptions = tree.xpath('//span[@class="summary"]/text()')
+            job_location = tree.xpath('//span[@class="location"]/span/text()')
+            company = tree.xpath('//span[@class="company"]/text()')
+            job_posted_date = tree.xpath('//span[@class="date"]/text()')
+            job_posted_date = (job.lstrip() for job in job_posted_date)
+            company = (job.lstrip() for job in company)
+            job_location = (job.lstrip() for job in job_location)
             jobtitles = (job.lstrip() for job in jobtitles)
             joblinks = (job.lstrip() for job in joblinks)
             job_descriptions = (job for job in job_descriptions)
-            Database.add_entry(zip(jobtitles, joblinks, job_descriptions))
+            Database.add_entry(jobtitles=next(jobtitles),
+                               joblinks=next(joblinks),
+                               job_descriptions=next(job_descriptions),
+                               job_location=next(job_location),
+                               company=next(company),
+                               job_posted_date=next(job_posted_date))
             link_pages = tree.xpath('//div[@class="pagination"]/a/@href')
             print(link_pages, 'link_pages')
             # look for next button
@@ -61,7 +74,7 @@ class Indeed:
                 digits_url = ''.join([d for d in p if d.isdigit()])
                 try:
                     print(digits_url, 'digits url')
-                    if digits_url > count:
+                    if int(digits_url) > count:
                         print(page, 'page')
                         count = int(digits_url)
                         print(count, 'count')
@@ -73,27 +86,33 @@ class Indeed:
                     print('This failed', digits_url)
 
 
-class Database(object):
+class Database:
     @staticmethod
-    def add_entry(job_offers):
-        job = Job(job_offers)
+    def add_entry(jobtitles, joblinks, job_descriptions, job_location, company, job_posted_date):
+
+        job = Job(job_title=jobtitles,
+                  job_link=joblinks,
+                  job_description=job_descriptions,
+                  job_location=job_location,
+                  company=company,
+                  job_posted_date=job_posted_date,
+                  crawl_timestamp=datetime.datetime.now())
         s = session()
         s.add(job)
         s.commit()
 
 
-def main():
-    """Run test object first to scrape and populatre SQL DB
-    then run Database.filter_jobs to find what you're looking for
-
-    ex: Indeed(job, city, province/state)
-    """
-    test = Indeed('manager', 'Toronto', 'ON')
-    test.crawl()
-    # search_terms = Database.filter_jobs('trainsim')
-    # search_terms = Database.filter_jobs
-    # send_mail('recipient@email.com', search_terms('manager'))
+def parse_args():
+    parser = argparse.ArgumentParser(description='Scrape indeed.ca and save results to sqlite database')
+    parser.add_argument("-s", "--searchterm", action="store",
+                        help="specify a search query", required=True)
+    parser.add_argument('-c', '--city', action='store',
+                        help='specify a city for the search query', required=True)
+    parser.add_argument('-p', '--province', action='store',
+                        help='specify a province for the search query', required=True)
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
-    main()
+    search = Indeed(parse_args())
+    search.crawl()

@@ -32,7 +32,7 @@ class Job(Base):
         return '<Job %d>' % self.id
 
 
-engine = create_engine('sqlite:///orm_in_detail.sqlite')
+engine = create_engine('sqlite:///jobs.sqlite')
 session = sessionmaker()
 session.configure(bind=engine)
 Base.metadata.create_all(engine)
