@@ -1,5 +1,5 @@
 # lead_scraper_orm
-Based off my orignal lead_scraper but now with SQLAlchemy as the ORM.
+Based off my orignal [lead_scraper](https://github.com/pydo/lead_scraper) but now with SQLAlchemy as the ORM.
 
 # Usage
 1. Run models.py to create the sqlite database.
