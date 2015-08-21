@@ -22,7 +22,7 @@ class Indeed:
         crawling = True
         count = 0
         while crawling:
-            time.sleep(10)
+            # time.sleep(5)
             searchterm = self.searchterm
             city = self.city
             prov = self.province
@@ -47,12 +47,13 @@ class Indeed:
             jobtitles = (job.lstrip() for job in jobtitles)
             joblinks = (job.lstrip() for job in joblinks)
             job_descriptions = (job for job in job_descriptions)
-            Database.add_entry(jobtitles=next(jobtitles),
-                               joblinks=next(joblinks),
-                               job_descriptions=next(job_descriptions),
-                               job_location=next(job_location),
-                               company=next(company),
-                               job_posted_date=next(job_posted_date))
+            for _ in jobtitles:
+                Database.add_entry(jobtitles=next(jobtitles),
+                                   joblinks=next(joblinks),
+                                   job_descriptions=next(job_descriptions),
+                                   job_location=next(job_location),
+                                   company=next(company),
+                                   job_posted_date=next(job_posted_date))
             link_pages = tree.xpath('//div[@class="pagination"]/a/@href')
             print(link_pages, 'link_pages')
             # look for next button
@@ -99,6 +100,7 @@ class Database:
                   crawl_timestamp=datetime.datetime.now())
         s = session()
         s.add(job)
+        # s.add_all(job)
         s.commit()
 
 
@@ -110,6 +112,7 @@ def parse_args():
                         help='specify a city for the search query', required=True)
     parser.add_argument('-p', '--province', action='store',
                         help='specify a province for the search query', required=True)
+
     return parser.parse_args()
 
 
